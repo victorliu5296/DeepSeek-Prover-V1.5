@@ -1,21 +1,22 @@
-import re
-
-import torch
-from transformers import AutoTokenizer
-from vllm import LLM, SamplingParams
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
 
 from prover.lean.verifier import Lean4ServerScheduler
 
+# Load the environment variables from the .env file
+load_dotenv()
 
-model_name = "deepseek-ai/DeepSeek-Prover-V1.5-RL"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = LLM(model=model_name, max_num_batched_tokens=8192, seed=1, trust_remote_code=True)
+client = OpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.environ.get("GROQ_API_KEY")
+)
+
+model_name = "llama3-70b-8192"
 
 lean4_scheduler = Lean4ServerScheduler(max_concurrent_requests=1, timeout=300, memory_limit=10, name='verifier')
 
-prompt = r'''Complete the following Lean 4 code:
-
-```lean4
+prompt = r'''Complete the following Lean 4 code. Do not include any code block markers. All explanations must be written in comments, only write the continuation to the code itself. Make sure to use Lean 4 syntax and not Lean 3: 
 '''
 
 code_prefix = r'''import Mathlib
@@ -31,41 +32,33 @@ theorem amc12b_2003_p6 (a r : ℝ) (u : ℕ → ℝ) (h₀ : ∀ k, u k = a * r 
   (h₂ : u 3 = 6) : u 0 = 2 / Real.sqrt 3 ∨ u 0 = -(2 / Real.sqrt 3) := by
 '''
 
-sampling_params = SamplingParams(
-    temperature=1.0,
-    max_tokens=2048,
-    top_p=0.95,
-    n=1,
-)
-model_inputs = [prompt + code_prefix]
-model_outputs = model.generate(
-    model_inputs,
-    sampling_params,
-    use_tqdm=False,
-)
-result = prompt + code_prefix + model_outputs[0].outputs[0].text
-print(result)
+try:
+    # Generate completion using the API
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt + code_prefix}],
+        temperature=1.0,
+        max_tokens=2048,
+        top_p=0.95,
+    )
 
-# Expected output:
-'''  simp_all only [Nat.one_eq_succ_zero, Nat.zero_eq, zero_add, Nat.add_succ, Nat.add_zero,
-    Nat.succ_add]
-  have h₁' : a * r = 2 := by simpa [h₀] using h₁
-  have h₂' : a * r ^ 3 = 6 := by simpa [h₀] using h₂
-  have h₃ : r ^ 2 = 3 := by
-    nlinarith
-  have h₄ : a = 2 / Real.sqrt 3 ∨ a = -(2 / Real.sqrt 3) := by
-    apply eq_or_eq_neg_of_sq_eq_sq <;>
-    field_simp <;>
-    nlinarith
-  simpa [h₀] using h₄
-```
-'''
+    # Extract the generated code from the response
+    generated_code = response.choices[0].message.content.strip()
+    
+    # Combine the code prefix with the generated code
+    full_code = code_prefix + generated_code
+    
+    print("Generated Lean 4 code:")
+    print(full_code)
 
-request_id_list = lean4_scheduler.submit_all_request([re.search(r'```lean4\n(.*?)\n```', result, re.DOTALL).group(1)])
-outputs_list = lean4_scheduler.get_all_request_outputs(request_id_list)
-print(outputs_list[0])
+    # Verify the generated proof
+    request_id_list = lean4_scheduler.submit_all_request([full_code])
+    outputs_list = lean4_scheduler.get_all_request_outputs(request_id_list)
+    print("\nVerification results:")
+    print(outputs_list)
 
-# Expected output (verify_time may vary):
-'''{'sorries': [], 'tactics': [], 'errors': [], 'warnings': [{'severity': 'warning', 'pos': {'line': 14, 'column': 7}, 'endPos': {'line': 14, 'column': 10}, 'data': "unused variable `h₁'`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`"}, {'severity': 'warning', 'pos': {'line': 15, 'column': 7}, 'endPos': {'line': 15, 'column': 10}, 'data': "unused variable `h₂'`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`"}, {'severity': 'warning', 'pos': {'line': 19, 'column': 35}, 'endPos': {'line': 19, 'column': 38}, 'data': 'Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\nnote: this linter can be disabled with `set_option linter.unnecessarySeqFocus false`'}, {'severity': 'warning', 'pos': {'line': 20, 'column': 15}, 'endPos': {'line': 20, 'column': 18}, 'data': 'Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\nnote: this linter can be disabled with `set_option linter.unnecessarySeqFocus false`'}], 'infos': [], 'system_messages': '', 'system_errors': None, 'ast': {}, 'verified_code': "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\n/-- The second and fourth terms of a geometric sequence are $2$ and $6$. Which of the following is a possible first term?\nShow that it is $\x0crac{2\\sqrt{3}}{3}$.-/\ntheorem amc12b_2003_p6 (a r : ℝ) (u : ℕ → ℝ) (h₀ : ∀ k, u k = a * r ^ k) (h₁ : u 1 = 2)\n  (h₂ : u 3 = 6) : u 0 = 2 / Real.sqrt 3 ∨ u 0 = -(2 / Real.sqrt 3) := by\n  simp_all only [Nat.one_eq_succ_zero, Nat.zero_eq, zero_add, Nat.add_succ, Nat.add_zero,\n    Nat.succ_add]\n  have h₁' : a * r = 2 := by simpa [h₀] using h₁\n  have h₂' : a * r ^ 3 = 6 := by simpa [h₀] using h₂\n  have h₃ : r ^ 2 = 3 := by\n    nlinarith\n  have h₄ : a = 2 / Real.sqrt 3 ∨ a = -(2 / Real.sqrt 3) := by\n    apply eq_or_eq_neg_of_sq_eq_sq <;>\n    field_simp <;>\n    nlinarith\n  simpa [h₀] using h₄", 'pass': True, 'complete': True, 'verify_time': 23.28123140335083}'''
+except Exception as e:
+    print(f"An error occurred: {str(e)}")
 
-lean4_scheduler.close()
+finally:
+    lean4_scheduler.close()

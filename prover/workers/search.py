@@ -8,23 +8,35 @@ from pathlib import Path
 import torch
 import torch.multiprocessing as mp
 import numpy as np
+from openai import OpenAI
+from dotenv import load_dotenv
 
 from prover.utils import AttrDict, get_datetime
 
-
 class SearchProcess(mp.Process):
-    def __init__(self, idx, log_dir, tokenizer_path, scheduler, data_loader, cfg):
+    def __init__(self, idx, log_dir, model_name, scheduler, data_loader, cfg):
         self.idx = idx
         self.log_dir = Path(log_dir)
+        self.model_name = model_name
         self.scheduler = scheduler
         self.data_loader = data_loader
         super().__init__()
 
         self._current_prob_idx = None
         sampler_cls = cfg.sampler['algorithm']
+
+        # Load environment variables
+        load_dotenv()
+
+        # Set up the OpenAI client
+        self.client = OpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=os.environ.get("GROQ_API_KEY")
+        )
+
         self.sampler = sampler_cls(
             scheduler=self.scheduler,
-            tokenizer_path=tokenizer_path,
+            model_name=model_name,
             process_print=self.process_print,
             cfg=AttrDict({
                 **cfg.sampler,
@@ -78,7 +90,6 @@ class SearchProcess(mp.Process):
                 success_count, len(candidate_list), sample_timecost, verification_timecost,
             ))
             
-
             summary_dict = dict(success=[], failure=[])
             for _idx, (candidate, result, info) in enumerate(zip(candidate_list, result_list, info_list)):
                 success_flag = 'success' if result['complete'] else 'failure'

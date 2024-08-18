@@ -1,18 +1,25 @@
 import os
-
 import numpy as np
-from transformers import AutoTokenizer
+from openai import OpenAI
+from dotenv import load_dotenv
 
 from prover.utils import get_datetime, load_jsonl_objects, MODEL_FORMAT
 
-
 class SamplingAlgorithmBase(object):
-    def __init__(self, scheduler, tokenizer_path, process_print, cfg, **kwargs):
-        os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+    def __init__(self, scheduler, model_name, process_print, cfg, **kwargs):
+        # Load environment variables
+        load_dotenv()
+
         self.scheduler = scheduler
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+        self.model_name = model_name
         self.process_print = process_print
         self.cfg = cfg
+
+        # Set up the OpenAI client
+        self.client = OpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=os.environ.get("GROQ_API_KEY")
+        )
 
         self.max_tokens = cfg.max_tokens
         self.few_shot_dataset = cfg.get('few_shot_dataset', None)
@@ -34,7 +41,13 @@ class SamplingAlgorithmBase(object):
         )
     
     def _encode_length(self, code):
-        return len(self.tokenizer.encode(code))
+        # Use the API to get token count
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": code}],
+            max_tokens=1,  # We only need the token count, not actual completion
+        )
+        return response.usage.prompt_tokens
     
     def _preprocess_data(self, input_data):
         if self.few_shot_dataset is None or self.few_shot_num == 0:

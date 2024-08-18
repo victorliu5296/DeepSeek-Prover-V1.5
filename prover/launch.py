@@ -43,13 +43,13 @@ if __name__ == "__main__":
         name='verifier',
     )
 
-    # load LLM models on gpus
+    # load LLM models from API
     generator_scheduler = ProcessScheduler(batch_size=cfg.batch_size, name='generator')
     llm_processes = [
         GeneratorProcess(
             local_rank=local_rank,
             node_rank=args.node_rank,
-            model_path=cfg.model_path,
+            model_name=cfg.model_name,
             task_queue=generator_scheduler.task_queue,
             request_statuses=generator_scheduler.request_statuses,
             lock=generator_scheduler.lock,
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         SearchProcess(
             idx=i+args.node_rank*cfg.n_search_procs,
             log_dir=args.log_dir,
-            tokenizer_path=cfg.model_path,
+            model_name=cfg.model_name,
             scheduler=scheduler,
             data_loader=data_loader,
             cfg=cfg,

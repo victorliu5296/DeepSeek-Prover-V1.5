@@ -14,7 +14,7 @@ lean_timeout = 300
 
 # model
 batch_size = 512
-model_path = 'deepseek-ai/DeepSeek-Prover-V1.5-RL'
+model_name = 'llama3-70b-8192'
 model_args = AttrDict(
     mode='cot', # `cot` or `non-cot`
     temperature=1,
