@@ -2,6 +2,50 @@
 <!-- markdownlint-disable html -->
 <!-- markdownlint-disable no-duplicate-header -->
 
+This is a fork of DeepSeek-Prover-V1.5 with a few modifications to make it compatible with APIs. The original README is below.
+
+Result: I got 0/244 when running the RMaxTS agent with Llama-3-70B from the Groq API on the test set of the high school level miniF2F benchmark. 
+If someone has funding, please run the experiments with Claude 3.5 and see if it gets better. In my experience, it is the best LLM as of August 2024 in terms of combined knowledge of Lean 4 syntax and reasoning ability. In addition, Mistral Large-2 is a also strong contender.
+Mistral's API is OpenAI-compatible, while Anthropic has their own Python package very similar to OpenAI, which you can learn about on their API documentation. It should be straightforward to run the experiments with them. To do this, you can (optionally) confirm that the setup works by changing the following lines in `quick_start.py`: 
+```python
+client = OpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.environ.get("GROQ_API_KEY")
+)
+```
+Then, to run the full experiment of RMaxTS, simply change instances of
+```python
+self.client = OpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.environ.get("GROQ_API_KEY")
+)
+```
+to the respective APIs, and you can add your API key to a `.env` file. For instance, if you want to use the Anthropic API, you can add the following line to `.env`:
+```
+ANTHROPIC_API_KEY=your-api-key 
+# replace `your-api-key` with your actual API key
+```
+and then change the line in `quick_start.py` to
+```python
+client = Anthropic(
+    api_key=os.environ.get("ANTHROPIC_API_KEY")
+)
+For the Mistral API, you can add the following line to `.env`:
+```
+MISTRAL_API_KEY=your-api-key 
+# replace `your-api-key` with your actual API key
+```
+and then change the line in `quick_start.py` to
+```python
+client = OpenAI(
+    base_url="https://api.mistral.ai/v1",
+    api_key=os.environ.get("MISTRAL_API_KEY")
+)
+
+For the rest, you just follow the instructions in the original README.
+
+# Original README
+
 <div align="center">
   <img src="https://github.com/deepseek-ai/DeepSeek-V2/blob/main/figures/logo.svg?raw=true" width="60%" alt="DeepSeek-V2" />
 </div>
@@ -69,17 +113,17 @@ We introduce DeepSeek-Prover-V1.5, an open-source language model designed for th
 
 <div align="center">
 
-|  | miniF2F-test | ProofNet |
-|--------|------------------|------------------|
-| **ReProver** | 26.5% |  13.8% |
-| **GPT-f** | 36.6% |  - |
-| **Hypertree Proof Search** | 41.0% |  - |
-| **InternLM2-StepProver** | 54.5% | 18.1% |
-| **DeepSeek-Prover-V1** | 50.0% | - |
-| **DeepSeek-Prover-V1.5-Base** | 42.2% | 13.2% |
-| **DeepSeek-Prover-V1.5-SFT** | 57.4% | 22.9% |
-| **DeepSeek-Prover-V1.5-RL** | 60.2% | 22.6% |
-| **DeepSeek-Prover-V1.5-RL + RMaxTS** | **63.5%** | **25.3%** |
+|                                      | miniF2F-test | ProofNet  |
+| ------------------------------------ | ------------ | --------- |
+| **ReProver**                         | 26.5%        | 13.8%     |
+| **GPT-f**                            | 36.6%        | -         |
+| **Hypertree Proof Search**           | 41.0%        | -         |
+| **InternLM2-StepProver**             | 54.5%        | 18.1%     |
+| **DeepSeek-Prover-V1**               | 50.0%        | -         |
+| **DeepSeek-Prover-V1.5-Base**        | 42.2%        | 13.2%     |
+| **DeepSeek-Prover-V1.5-SFT**         | 57.4%        | 22.9%     |
+| **DeepSeek-Prover-V1.5-RL**          | 60.2%        | 22.6%     |
+| **DeepSeek-Prover-V1.5-RL + RMaxTS** | **63.5%**    | **25.3%** |
 
 </div>
 
@@ -89,11 +133,11 @@ We release the DeepSeek-Prover-V1.5 with 7B parameters, including base, SFT and 
 
 <div align="center">
 
-|            **Model**            |                          **Download**                         |
-| :-----------------------------: | :----------------------------------------------------------: |
-|   DeepSeek-Prover-V1.5-Base   | [🤗 HuggingFace](https://huggingface.co/deepseek-ai/DeepSeek-Prover-V1.5-Base) |
-|   DeepSeek-Prover-V1.5-SFT   | [🤗 HuggingFace](https://huggingface.co/deepseek-ai/DeepSeek-Prover-V1.5-SFT) |
-|   DeepSeek-Prover-V1.5-RL   | [🤗 HuggingFace](https://huggingface.co/deepseek-ai/DeepSeek-Prover-V1.5-RL) |
+|         **Model**         |                                 **Download**                                  |
+| :-----------------------: | :---------------------------------------------------------------------------: |
+| DeepSeek-Prover-V1.5-Base | [🤗 HuggingFace](https://huggingface.co/deepseek-ai/DeepSeek-Prover-V1.5-Base) |
+| DeepSeek-Prover-V1.5-SFT  | [🤗 HuggingFace](https://huggingface.co/deepseek-ai/DeepSeek-Prover-V1.5-SFT)  |
+|  DeepSeek-Prover-V1.5-RL  |  [🤗 HuggingFace](https://huggingface.co/deepseek-ai/DeepSeek-Prover-V1.5-RL)  |
 
 </div>
 
