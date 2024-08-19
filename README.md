@@ -30,6 +30,7 @@ and then change the line in `quick_start.py` to
 client = Anthropic(
     api_key=os.environ.get("ANTHROPIC_API_KEY")
 )
+```
 For the Mistral API, you can add the following line to `.env`:
 ```
 MISTRAL_API_KEY=your-api-key 
@@ -41,6 +42,7 @@ client = OpenAI(
     base_url="https://api.mistral.ai/v1",
     api_key=os.environ.get("MISTRAL_API_KEY")
 )
+```
 
 For the rest, you just follow the instructions in the original README.
 
